@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model accounts {
+  id         Int          @id @default(autoincrement())
+  username   String       @unique @db.VarChar(100)
+  email      String       @db.VarChar(255)
+  full_name  String?      @db.VarChar(150)
+  phone      String?      @db.VarChar(20)
+  password   String?      @db.VarChar(255)
+  status     String       @default("active") @db.VarChar(20)
+  role       String       @default("user") @db.VarChar(20)
+  can_add_money Boolean   @default(false)
+  attendance attendance[]
+  cart       cart?
+  wallet     wallet?
+  support_conversation support_conversation?
+  sent_messages support_message[] @relation("message_sender")
+}
+
+model products {
+  id          Int          @id @default(autoincrement())
+  name        String       @db.VarChar(150)
+  description String?
+  price       Float
+  category    String?      @db.VarChar(100)
+  brand       String?      @db.VarChar(100)
+  stock       Int          @default(0)
+  image_url   String?
+  details     String?
+  cart_items  cart_items[]
+}
+
+model attendance {
+  id         Int      @id @default(autoincrement())
+  account_id Int
+  date       DateTime @db.Date
+  status     String   @db.VarChar(20)
+  accounts   accounts @relation(fields: [account_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([account_id, date])
+}
+
+model cart {
+  id         Int         @id @default(autoincrement())
+  account_id Int         @unique
+  accounts   accounts    @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  items      cart_items[]
+}
+
+model cart_items {
+  id         Int      @id @default(autoincrement())
+  cart_id    Int
+  product_id Int
+  quantity   Int      @default(1)
+  cart       cart     @relation(fields: [cart_id], references: [id], onDelete: Cascade)
+  product    products @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@unique([cart_id, product_id])
+}
+
+model wallet {
+  id         Int      @id @default(autoincrement())
+  account_id Int      @unique
+  balance    Float    @default(10000)
+  accounts   accounts @relation(fields: [account_id], references: [id], onDelete: Cascade)
+}
+
+model support_conversation {
+  id          Int              @id @default(autoincrement())
+  account_id  Int              @unique
+  created_at  DateTime         @default(now())
+  updated_at  DateTime         @updatedAt
+  account     accounts         @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  messages    support_message[]
+}
+
+model support_message {
+  id              Int                  @id @default(autoincrement())
+  conversation_id  Int
+  sender_id       Int
+  sender_role     String               @db.VarChar(20)
+  content         String
+  created_at      DateTime             @default(now())
+  conversation    support_conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  sender          accounts             @relation("message_sender", fields: [sender_id], references: [id], onDelete: NoAction)
+}
